@@ -1,0 +1,39 @@
+### Create Student
+POST http://localhost:8080/api/v1/students
+Content-Type: application/json
+
+{
+  "rollNumber": "2025CS001",
+  "firstName": "Girish",
+  "lastName": "Y",
+  "email": "girish@example.com",
+  "dob": "2003-05-12",
+  "gender": "Male",
+  "phone": "9876543210"
+}
+
+### Get All Students
+GET http://localhost:8080/api/v1/students
+
+### Get Student by ID
+GET http://localhost:8080/api/v1/students/1
+
+### Get Student by Roll Number
+GET http://localhost:8080/api/v1/students/roll/2025CS001
+
+### Update Student
+PUT http://localhost:8080/api/v1/students/1
+Content-Type: application/json
+
+{
+  "rollNumber": "2025CS001",
+  "firstName": "Girish Updated",
+  "lastName": "Y",
+  "email": "girish.new@example.com",
+  "dob": "2003-05-12",
+  "gender": "Male",
+  "phone": "9876543211"
+}
+
+### Delete Student
+DELETE http://localhost:8080/api/v1/students/1

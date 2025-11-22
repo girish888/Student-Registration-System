@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Student Management - Night Mode</title>
+
+    <style>
+        /* 1. GLOBAL RESET - Fixes the input width/padding alignment issues */
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        :root{
+          --bg: #0f1724;           /* Deep slate background */
+          --panel: #111827;        /* Card background */
+          --text-main: #e6eef8;    /* Bright white-blue text */
+          --text-muted: #9ca3af;   /* Muted gray text */
+          --accent: #60a5fa;       /* Primary Blue */
+          --accent-hover: #4f46e5; /* Darker Blue */
+          --input-bg: #0b1220;     /* Input dark background */
+          --border: #1f2937;       /* Borders */
+          --danger: #ef4444;       /* Red */
+        }
+
+        body {
+          margin: 0;
+          font-family: Inter, system-ui, -apple-system, sans-serif;
+          background: linear-gradient(180deg, rgba(8,10,15,1) 0%, rgba(17,24,39,1) 100%);
+          color: var(--text-main);
+          height: 100vh;
+          padding: 28px;
+        }
+
+        .container { max-width: 1100px; margin: 0 auto; }
+
+        /* Header & Layout */
+        header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+        header h1 { font-size: 22px; margin: 0; color: #f8fafc; }
+        header p { margin: 4px 0 0 0; color: var(--text-muted); font-size: 14px; }
+
+        .grid { display: grid; grid-template-columns: 1fr 420px; gap: 20px; }
+        .card {
+            background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            border: 1px solid var(--border);
+        }
+
+        /* Inputs & Forms */
+        label { font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px; font-weight: 500; }
+
+        input, select {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            background: var(--input-bg);
+            border: 1px solid rgba(255,255,255,0.05);
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+
+            /* CRITICAL: Default text color is muted (for placeholders) */
+            color: var(--text-muted);
+        }
+
+        input:focus, select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.15);
+            color: var(--text-main);
+        }
+
+        /* --- COLOR LOGIC: Switch to bright text when value is present --- */
+
+        /* 1. Text Inputs: If value is NOT empty, use bright color */
+        input:not(:placeholder-shown) {
+            color: var(--text-main);
+        }
+
+        /* 2. Select Dropdown: If valid option selected, use bright color */
+        select:valid {
+            color: var(--text-main);
+        }
+
+        /* 3. Date Input: If a date is picked (valid), use bright color */
+        input[type="date"]:valid {
+            color: var(--text-main);
+        }
+
+        /* 4. Date Input WebKit Hack: Force the "dd-mm-yyyy" text to be muted */
+        input[type="date"]::-webkit-datetime-edit-fields-wrapper { color: var(--text-muted); }
+        input[type="date"]:valid::-webkit-datetime-edit-fields-wrapper { color: var(--text-main); }
+
+        /* Buttons */
+        .actions { display: flex; gap: 10px; margin-top: 20px; }
+        button {
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: transform 0.1s;
+        }
+        button:active { transform: scale(0.98); }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+        }
+        .btn-secondary {
+            background: transparent;
+            color: var(--accent);
+            border: 1px solid rgba(96, 165, 250, 0.2);
+        }
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        /* List & Table */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { text-align: left; color: var(--text-muted); font-size: 12px; padding: 8px; border-bottom: 1px solid var(--border); }
+        td { padding: 12px 8px; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.02); }
+        .row { display: flex; gap: 16px; margin-bottom: 14px; }
+        .row > div { flex: 1; }
+
+        /* Utilities */
+        .toast {
+            position: fixed; right: 20px; bottom: 20px;
+            background: #1f2937; color: white;
+            padding: 12px 20px; border-radius: 8px;
+            border-left: 4px solid var(--accent);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            transform: translateY(100px); opacity: 0;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+
+        @media (max-width: 900px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div>
+            <h1>Student Management</h1>
+            <p>Start your student career</p>
+        </div>
+    </header>
+
+    <div class="grid">
+        <!-- LEFT COLUMN: FORM -->
+        <section class="card">
+            <h3 id="form-title" style="margin-top:0; color:white;">Add New Student</h3>
+
+            <form id="student-form">
+                <input type="hidden" id="student-id">
+
+                <div class="row">
+                    <div>
+                        <label>Roll Number</label>
+                        <input id="rollNumber" type="text" placeholder="2025CS101" required>
+                    </div>
+                    <div>
+                        <label>First Name</label>
+                        <input id="firstName" type="text" placeholder="John" required>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div>
+                        <label>Last Name</label>
+                        <input id="lastName" type="text" placeholder="Doe">
+                    </div>
+                    <div>
+                        <label>Email Address</label>
+                        <input id="email" type="email" placeholder="john@example.com">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div>
+                        <label>Date of Birth</label>
+                        <!-- Placeholder attr is visual only, CSS handles the color -->
+                        <input id="dob" type="date" placeholder="dd-mm-yyyy">
+                    </div>
+                    <div>
+                        <label>Gender</label>
+                        <select id="gender" required>
+                            <option value="" disabled selected>Select Gender</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <label>Phone Number</label>
+                    <input id="phone" type="text" placeholder="9876543210">
+                </div>
+
+                <div class="actions">
+                    <button type="submit" id="submit-btn" class="btn-primary">Save Student</button>
+                    <button type="button" id="reset-btn" class="btn-secondary">Reset</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- RIGHT COLUMN: LIST -->
+        <aside class="card">
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <input id="search" placeholder="Search..." style="flex:1">
+                <button id="refresh-btn" class="btn-secondary" style="padding: 10px;">↻</button>
+            </div>
+
+            <div id="list-container">
+                <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                    Loading data...
+                </div>
+            </div>
+
+            <div style="margin-top: 20px; text-align: right;">
+                <button id="clear-btn" class="btn-danger" style="font-size: 11px;">Delete All Data</button>
+            </div>
+        </aside>
+    </div>
+</div>
+
+<!-- Notification Toast -->
+<div id="toast" class="toast">Action Successful</div>
+
+<script>
+    /* --- CONFIGURATION --- */
+    const API_URL = 'http://localhost:8080/api/v1/students';
+    const MAX_RETRIES = 3;
+    const MOCK_MODE = false; // Set to true to disable API calls and use mock data
+
+    // Mock data for testing when MOCK_MODE is true
+    const MOCK_STUDENTS = [
+        { id: 1, rollNumber: "2024CE101", firstName: "Alice", lastName: "Smith", email: "alice@example.com", phone: "555-1234", dob: "2000-01-15", gender: "Female" },
+        { id: 2, rollNumber: "2024IT202", firstName: "Bob", lastName: "Johnson", email: "bob@example.com", phone: "555-5678", dob: "1999-05-20", gender: "Male" },
+        { id: 3, rollNumber: "2025CS303", firstName: "Charlie", lastName: "Brown", email: "charlie@example.com", phone: "555-9012", dob: "2001-11-01", gender: "Other" }
+    ];
+
+    /* --- UTILITIES --- */
+    const $ = id => document.getElementById(id);
+
+    // Clean, syntax-error-free HTML escaping
+    const escapeHtml = (unsafe) => {
+        if (!unsafe) return "";
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return String(unsafe).replace(/[&<>"']/g, (m) => map[m]);
+    };
+
+    const showToast = (msg, isError = false) => {
+        const t = $('toast');
+        t.textContent = msg;
+        t.style.borderLeftColor = isError ? 'var(--danger)' : 'var(--accent)';
+        t.classList.add('show');
+
+        // Remove 'show' class after animation completes
+        clearTimeout(t._tid);
+        t._tid = setTimeout(() => t.classList.remove('show'), 3000);
+    };
+
+    // Helper for exponential backoff and retry
+    async function fetchWithRetry(url, options = {}, retries = 0) {
+        if (MOCK_MODE) {
+            // Mock mode prevents all network errors
+            throw new Error("MOCK_FAILURE");
+        }
+
+        try {
+            const response = await fetch(url, options);
+            return response;
+        } catch (error) {
+            if (retries < MAX_RETRIES) {
+                const delay = Math.pow(2, retries) * 500; // 0.5s, 1s, 2s
+                await new Promise(resolve => setTimeout(resolve, delay));
+                return fetchWithRetry(url, options, retries + 1);
+            }
+            throw error; // Re-throw the error if max retries reached
+        }
+    }
+
+    /* --- API INTERACTIONS --- */
+
+    async function fetchStudents() {
+        const search = $('search').value;
+        const url = `${API_URL}?search=${encodeURIComponent(search)}`;
+
+        // Show loading indicator
+        $('list-container').innerHTML = `
+            <div style="text-align:center; padding:30px; color:var(--text-muted);">
+                Loading students...
+            </div>`;
+
+        try {
+            const res = await fetchWithRetry(url);
+            if (!res.ok) throw new Error('Server responded with status: ' + res.status);
+
+            const data = await res.json();
+            const list = Array.isArray(data) ? data : (data.content || []);
+
+            renderTable(list);
+        } catch (err) {
+            console.error('Fetch error:', err);
+
+            // Check for MOCK_MODE or a network failure
+            if (MOCK_MODE || err.message === "MOCK_FAILURE" || err.message.includes("Failed to fetch")) {
+                // If the connection fails, render mock data for UI testing
+                const filteredList = MOCK_STUDENTS.filter(s =>
+                    s.firstName.toLowerCase().includes(search.toLowerCase()) ||
+                    s.lastName.toLowerCase().includes(search.toLowerCase()) ||
+                    s.rollNumber.toLowerCase().includes(search.toLowerCase())
+                );
+                renderTable(filteredList, true);
+
+                $('list-container').insertAdjacentHTML('beforebegin', `
+                    <div id="mock-warning" style="padding:10px; margin-bottom: 10px; font-size: 12px; color: var(--danger); background: rgba(239, 68, 68, 0.1); border-radius: 8px;">
+                        ⚠️ <strong>Mock Data Mode:</strong> Backend connection failed. Displaying simulated data.
+                    </div>
+                `);
+
+            } else {
+                // Handle actual server errors (e.g., 500 status code)
+                $('list-container').innerHTML = `
+                    <div style="text-align:center; padding:30px; color:var(--danger); border:1px solid var(--danger); border-radius:8px;">
+                        <strong>Backend error:</strong> ${err.message}.
+                    </div>`;
+                showToast('Backend connection failed', true);
+            }
+        }
+    }
+
+    async function saveStudent(e) {
+        e.preventDefault();
+
+        const id = $('student-id').value;
+        const payload = {
+            rollNumber: $('rollNumber').value,
+            firstName: $('firstName').value,
+            lastName: $('lastName').value,
+            email: $('email').value,
+            dob: $('dob').value || null,
+            gender: $('gender').value,
+            phone: $('phone').value
+        };
+
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `${API_URL}/${id}` : API_URL;
+
+        try {
+            const res = await fetchWithRetry(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) {
+                 const errJson = await res.json().catch(() => ({ message: 'Unknown save error' }));
+                 throw new Error(errJson.message || errJson.error || 'Save failed');
+            }
+
+            showToast(id ? 'Student updated' : 'Student created');
+            resetForm();
+            fetchStudents();
+        } catch (err) {
+            showToast('Save Error: ' + err.message, true);
+        }
+    }
+
+    async function deleteStudent(id) {
+        // NOTE: Using window.confirm temporarily, should be a custom modal in production.
+        if (!confirm('Are you sure you want to delete student ID: ' + id + '?')) return;
+
+        try {
+            const res = await fetchWithRetry(`${API_URL}/${id}`, { method: 'DELETE' });
+            if (res.status !== 200 && res.status !== 204) throw new Error('Delete failed');
+            showToast('Student deleted');
+            fetchStudents();
+        } catch (err) {
+            showToast('Delete Error: ' + err.message, true);
+        }
+    }
+
+    async function clearAllData() {
+        if(!confirm("WARNING: This will delete ALL students. Continue?")) return;
+
+        try {
+            const res = await fetchWithRetry(API_URL);
+            const data = await res.json();
+            const list = data.content || [];
+
+            let count = 0;
+            for (let s of list) {
+                // Individual deletes are not retried for simplicity in this loop
+                await fetchWithRetry(`${API_URL}/${s.id}`, { method: 'DELETE' }, 0);
+                count++;
+            }
+            showToast(`Cleared ${count} records`);
+            fetchStudents();
+        } catch (e) {
+            showToast('Clear Error: ' + e.message, true);
+        }
+    }
+
+    /* --- UI LOGIC --- */
+
+    function renderTable(students, isMock = false) {
+        // Remove mock warning if it exists
+        const warning = $('mock-warning');
+        if (warning) warning.remove();
+
+        if (students.length === 0) {
+            $('list-container').innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted)">No students found.</div>';
+            return;
+        }
+
+        let html = `<table>
+            <thead><tr> <th>Roll</th> <th>Name & Contact</th> <th>Action</th> </tr></thead>
+            <tbody>`;
+
+        students.forEach(s => {
+            // Safe JSON stringification for data attributes
+            const safeObj = JSON.stringify(s).replace(/'/g, "&#39;");
+
+            html += `
+            <tr>
+                <td style="color:var(--accent); font-family:monospace; width: 100px;">${escapeHtml(s.rollNumber)}</td>
+                <td>
+                    <div style="font-weight:500">${escapeHtml(s.firstName)} ${escapeHtml(s.lastName)}</div>
+                    <div style="font-size:11px; color:var(--text-muted)">${escapeHtml(s.email)} | ${escapeHtml(s.phone)}</div>
+                </td>
+                <td style="text-align:right; width: 80px; white-space:nowrap">
+                    <button class="btn-edit" data-obj='${safeObj}' style="background:none; border:none; color:var(--text-muted); cursor:pointer; margin-right: 5px;" ${isMock ? 'disabled' : ''}>✎</button>
+                    <button class="btn-del" data-id="${s.id}" style="background:none; border:none; color:var(--danger); cursor:pointer;" ${isMock ? 'disabled' : ''}>×</button>
+                </td>
+            </tr>`;
+        });
+
+        html += '</tbody></table>';
+        $('list-container').innerHTML = html;
+
+        // Bind events dynamically
+        document.querySelectorAll('.btn-del').forEach(b =>
+            b.onclick = () => deleteStudent(b.dataset.id)
+        );
+        document.querySelectorAll('.btn-edit').forEach(b =>
+            b.onclick = () => loadForm(JSON.parse(b.dataset.obj))
+        );
+    }
+
+    function loadForm(s) {
+        $('student-id').value = s.id;
+        $('rollNumber').value = s.rollNumber || '';
+        $('firstName').value = s.firstName || '';
+        $('lastName').value = s.lastName || '';
+        $('email').value = s.email || '';
+        $('dob').value = s.dob || '';
+        $('gender').value = s.gender || '';
+        $('phone').value = s.phone || '';
+
+        // Manually dispatch input event to update CSS color for pre-filled fields
+        $('rollNumber').dispatchEvent(new Event('input'));
+        $('firstName').dispatchEvent(new Event('input'));
+        $('dob').dispatchEvent(new Event('input'));
+        $('gender').dispatchEvent(new Event('input'));
+
+        $('form-title').textContent = 'Edit Student';
+        $('submit-btn').textContent = 'Update Student';
+    }
+
+    function resetForm() {
+        $('student-form').reset();
+        $('student-id').value = '';
+        $('form-title').textContent = 'Add New Student';
+        $('submit-btn').textContent = 'Save Student';
+
+        // Manually dispatch input event to revert CSS colors to muted
+        $('rollNumber').dispatchEvent(new Event('input'));
+        $('firstName').dispatchEvent(new Event('input'));
+        $('dob').dispatchEvent(new Event('input'));
+        $('gender').dispatchEvent(new Event('input'));
+    }
+
+    /* --- INIT --- */
+    window.addEventListener('DOMContentLoaded', () => {
+        $('student-form').onsubmit = saveStudent;
+        $('reset-btn').onclick = resetForm;
+        $('refresh-btn').onclick = fetchStudents;
+        $('search').oninput = () => {
+            clearTimeout(window._searchTimer);
+            window._searchTimer = setTimeout(fetchStudents, 400);
+        };
+        $('clear-btn').onclick = clearAllData;
+
+        // Ensure the form starts in the correct state (muted colors)
+        resetForm();
+        fetchStudents();
+    });
+
+</script>
+</body>
+</html>
